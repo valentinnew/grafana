@@ -17,7 +17,7 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/grafana/grafana/pkg/bus"
-	"github.com/grafana/grafana/pkg/log"
+	"github.com/grafana/grafana/pkg/infra/log"
 	"github.com/grafana/grafana/pkg/login/social"
 	m "github.com/grafana/grafana/pkg/models"
 	"github.com/grafana/grafana/pkg/plugins"
@@ -96,13 +96,21 @@ func (proxy *DataSourceProxy) HandleRequest() {
 	proxy.addTraceFromHeaderValue(span, "X-Panel-Id", "panel_id")
 	proxy.addTraceFromHeaderValue(span, "X-Dashboard-Id", "dashboard_id")
 
-	opentracing.GlobalTracer().Inject(
+	if err := opentracing.GlobalTracer().Inject(
 		span.Context(),
 		opentracing.HTTPHeaders,
-		opentracing.HTTPHeadersCarrier(proxy.ctx.Req.Request.Header))
+		opentracing.HTTPHeadersCarrier(proxy.ctx.Req.Request.Header)); err != nil {
+		logger.Error("Failed to inject span context instance", "err", err)
+	}
+
+	originalSetCookie := proxy.ctx.Resp.Header().Get("Set-Cookie")
 
 	reverseProxy.ServeHTTP(proxy.ctx.Resp, proxy.ctx.Req.Request)
 	proxy.ctx.Resp.Header().Del("Set-Cookie")
+
+	if originalSetCookie != "" {
+		proxy.ctx.Resp.Header().Set("Set-Cookie", originalSetCookie)
+	}
 }
 
 func (proxy *DataSourceProxy) addTraceFromHeaderValue(span opentracing.Span, headerName string, tagName string) {
@@ -110,28 +118,6 @@ func (proxy *DataSourceProxy) addTraceFromHeaderValue(span opentracing.Span, hea
 	dashId, err := strconv.Atoi(panelId)
 	if err == nil {
 		span.SetTag(tagName, dashId)
-	}
-}
-
-func (proxy *DataSourceProxy) useCustomHeaders(req *http.Request) {
-	decryptSdj := proxy.ds.SecureJsonData.Decrypt()
-	index := 1
-	for {
-		headerNameSuffix := fmt.Sprintf("httpHeaderName%d", index)
-		headerValueSuffix := fmt.Sprintf("httpHeaderValue%d", index)
-		if key := proxy.ds.JsonData.Get(headerNameSuffix).MustString(); key != "" {
-			if val, ok := decryptSdj[headerValueSuffix]; ok {
-				// remove if exists
-				if req.Header.Get(key) != "" {
-					req.Header.Del(key)
-				}
-				req.Header.Add(key, val)
-				logger.Debug("Using custom header ", "CustomHeaders", key)
-			}
-		} else {
-			break
-		}
-		index += 1
 	}
 }
 
@@ -146,26 +132,21 @@ func (proxy *DataSourceProxy) getDirector() func(req *http.Request) {
 		if proxy.ds.Type == m.DS_INFLUXDB_08 {
 			req.URL.Path = util.JoinURLFragments(proxy.targetUrl.Path, "db/"+proxy.ds.Database+"/"+proxy.proxyPath)
 			reqQueryVals.Add("u", proxy.ds.User)
-			reqQueryVals.Add("p", proxy.ds.Password)
+			reqQueryVals.Add("p", proxy.ds.DecryptedPassword())
 			req.URL.RawQuery = reqQueryVals.Encode()
 		} else if proxy.ds.Type == m.DS_INFLUXDB {
 			req.URL.Path = util.JoinURLFragments(proxy.targetUrl.Path, proxy.proxyPath)
 			req.URL.RawQuery = reqQueryVals.Encode()
 			if !proxy.ds.BasicAuth {
 				req.Header.Del("Authorization")
-				req.Header.Add("Authorization", util.GetBasicAuthHeader(proxy.ds.User, proxy.ds.Password))
+				req.Header.Add("Authorization", util.GetBasicAuthHeader(proxy.ds.User, proxy.ds.DecryptedPassword()))
 			}
 		} else {
 			req.URL.Path = util.JoinURLFragments(proxy.targetUrl.Path, proxy.proxyPath)
 		}
 		if proxy.ds.BasicAuth {
 			req.Header.Del("Authorization")
-			req.Header.Add("Authorization", util.GetBasicAuthHeader(proxy.ds.BasicAuthUser, proxy.ds.BasicAuthPassword))
-		}
-
-		// Lookup and use custom headers
-		if proxy.ds.SecureJsonData != nil {
-			proxy.useCustomHeaders(req)
+			req.Header.Add("Authorization", util.GetBasicAuthHeader(proxy.ds.BasicAuthUser, proxy.ds.DecryptedBasicAuthPassword()))
 		}
 
 		dsAuth := req.Header.Get("X-DS-Authorization")
@@ -348,7 +329,7 @@ func addOAuthPassThruAuth(c *m.ReqContext, req *http.Request) {
 	// If the tokens are not the same, update the entry in the DB
 	if token.AccessToken != authInfoQuery.Result.OAuthAccessToken {
 		updateAuthCommand := &m.UpdateAuthInfoCommand{
-			UserId:     authInfoQuery.Result.Id,
+			UserId:     authInfoQuery.Result.UserId,
 			AuthModule: authInfoQuery.Result.AuthModule,
 			AuthId:     authInfoQuery.Result.AuthId,
 			OAuthToken: token,

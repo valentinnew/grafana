@@ -1,16 +1,17 @@
 import React, { PureComponent } from 'react';
-import { connect } from 'react-redux';
 import { hot } from 'react-hot-loader';
 import Page from 'app/core/components/Page/Page';
 import { DeleteButton } from '@grafana/ui';
+import { NavModel } from '@grafana/data';
 import EmptyListCTA from 'app/core/components/EmptyListCTA/EmptyListCTA';
-import { NavModel, Team, OrgRole } from 'app/types';
+import { Team, OrgRole, StoreState } from 'app/types';
 import { loadTeams, deleteTeam, setSearchQuery } from './state/actions';
 import { getSearchQuery, getTeams, getTeamsCount, isPermissionTeamAdmin } from './state/selectors';
 import { getNavModel } from 'app/core/selectors/navModel';
 import { FilterInput } from 'app/core/components/FilterInput/FilterInput';
 import { config } from 'app/core/config';
 import { contextSrv, User } from 'app/core/services/context_srv';
+import { connectWithCleanUp } from '../../core/components/connectWithCleanUp';
 
 export interface Props {
   navModel: NavModel;
@@ -73,20 +74,16 @@ export class TeamList extends PureComponent<Props, any> {
 
   renderEmptyList() {
     return (
-      <div className="page-container page-body">
-        <EmptyListCTA
-          model={{
-            title: "You haven't created any teams yet.",
-            buttonIcon: 'fa fa-plus',
-            buttonLink: 'org/teams/new',
-            buttonTitle: ' New team',
-            proTip: 'Assign folder and dashboard permissions to teams instead of users to ease administration.',
-            proTipLink: '',
-            proTipLinkTitle: '',
-            proTipTarget: '_blank',
-          }}
-        />
-      </div>
+      <EmptyListCTA
+        title="You haven't created any teams yet."
+        buttonIcon="gicon gicon-team"
+        buttonLink="org/teams/new"
+        buttonTitle=" New team"
+        proTip="Assign folder and dashboard permissions to teams instead of users to ease administration."
+        proTipLink=""
+        proTipLinkTitle=""
+        proTipTarget="_blank"
+      />
     );
   }
 
@@ -155,7 +152,7 @@ export class TeamList extends PureComponent<Props, any> {
   }
 }
 
-function mapStateToProps(state) {
+function mapStateToProps(state: StoreState) {
   return {
     navModel: getNavModel(state.navIndex, 'teams'),
     teams: getTeams(state.teams),
@@ -173,9 +170,4 @@ const mapDispatchToProps = {
   setSearchQuery,
 };
 
-export default hot(module)(
-  connect(
-    mapStateToProps,
-    mapDispatchToProps
-  )(TeamList)
-);
+export default hot(module)(connectWithCleanUp(mapStateToProps, mapDispatchToProps, state => state.teams)(TeamList));

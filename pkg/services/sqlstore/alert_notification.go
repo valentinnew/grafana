@@ -213,11 +213,12 @@ func getAlertNotificationWithUidInternal(query *m.GetAlertNotificationsWithUidQu
 func CreateAlertNotificationCommand(cmd *m.CreateAlertNotificationCommand) error {
 	return inTransaction(func(sess *DBSession) error {
 		if cmd.Uid == "" {
-			if uid, uidGenerationErr := generateNewAlertNotificationUid(sess, cmd.OrgId); uidGenerationErr != nil {
+			uid, uidGenerationErr := generateNewAlertNotificationUid(sess, cmd.OrgId)
+			if uidGenerationErr != nil {
 				return uidGenerationErr
-			} else {
-				cmd.Uid = uid
 			}
+
+			cmd.Uid = uid
 		}
 		existingQuery := &m.GetAlertNotificationsWithUidQuery{OrgId: cmd.OrgId, Uid: cmd.Uid}
 		err := getAlertNotificationWithUidInternal(existingQuery, sess)
@@ -382,6 +383,8 @@ func UpdateAlertNotificationWithUid(cmd *m.UpdateAlertNotificationWithUidCommand
 		return err
 	}
 
+	cmd.Result = updateNotification.Result
+
 	return nil
 }
 
@@ -389,10 +392,11 @@ func SetAlertNotificationStateToCompleteCommand(ctx context.Context, cmd *m.SetA
 	return inTransactionCtx(ctx, func(sess *DBSession) error {
 		version := cmd.Version
 		var current m.AlertNotificationState
-		sess.ID(cmd.Id).Get(&current)
+		if _, err := sess.ID(cmd.Id).Get(&current); err != nil {
+			return err
+		}
 
 		newVersion := cmd.Version + 1
-
 		sql := `UPDATE alert_notification_state SET
 			state = ?,
 			version = ?,
@@ -401,7 +405,6 @@ func SetAlertNotificationStateToCompleteCommand(ctx context.Context, cmd *m.SetA
 			id = ?`
 
 		_, err := sess.Exec(sql, m.AlertNotificationStateCompleted, newVersion, timeNow().Unix(), cmd.Id)
-
 		if err != nil {
 			return err
 		}

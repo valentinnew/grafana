@@ -3,8 +3,10 @@ jest.mock('./css/query_editor.css', () => {
 });
 
 import { AzureMonitorQueryCtrl } from './query_ctrl';
+// @ts-ignore
 import Q from 'q';
 import { TemplateSrv } from 'app/features/templating/template_srv';
+import { auto } from 'angular';
 
 describe('AzureMonitorQueryCtrl', () => {
   let queryCtrl: any;
@@ -15,9 +17,13 @@ describe('AzureMonitorQueryCtrl', () => {
       panel: { scopedVars: [], targets: [] },
     };
     AzureMonitorQueryCtrl.prototype.target = {} as any;
+    AzureMonitorQueryCtrl.prototype.datasource = {
+      $q: Q,
+      appInsightsDatasource: { isConfigured: () => false },
+      azureMonitorDatasource: { isConfigured: () => false },
+    };
 
-    queryCtrl = new AzureMonitorQueryCtrl({}, {}, new TemplateSrv());
-    queryCtrl.datasource = { $q: Q, appInsightsDatasource: { isConfigured: () => false } };
+    queryCtrl = new AzureMonitorQueryCtrl({}, {} as auto.IInjectorService, new TemplateSrv());
   });
 
   describe('init query_ctrl variables', () => {
@@ -33,8 +39,9 @@ describe('AzureMonitorQueryCtrl', () => {
       expect(queryCtrl.target.azureMonitor.resourceGroup).toBe('select');
       expect(queryCtrl.target.azureMonitor.metricDefinition).toBe('select');
       expect(queryCtrl.target.azureMonitor.resourceName).toBe('select');
+      expect(queryCtrl.target.azureMonitor.metricNamespace).toBe('select');
       expect(queryCtrl.target.azureMonitor.metricName).toBe('select');
-      expect(queryCtrl.target.appInsights.groupBy).toBe('none');
+      expect(queryCtrl.target.appInsights.dimension).toBe('none');
     });
   });
 
@@ -54,7 +61,7 @@ describe('AzureMonitorQueryCtrl', () => {
       });
 
       it('should return a list of Resource Groups', () => {
-        return queryCtrl.getResourceGroups('').then(result => {
+        return queryCtrl.getResourceGroups('').then((result: any) => {
           expect(result[0].text).toBe('nodeapp');
         });
       });
@@ -68,15 +75,17 @@ describe('AzureMonitorQueryCtrl', () => {
         ];
 
         beforeEach(() => {
+          queryCtrl.target.subscription = 'sub1';
           queryCtrl.target.azureMonitor.resourceGroup = 'test';
-          queryCtrl.datasource.getMetricDefinitions = function(query) {
+          queryCtrl.datasource.getMetricDefinitions = function(subscriptionId: any, query: any) {
+            expect(subscriptionId).toBe('sub1');
             expect(query).toBe('test');
             return this.$q.when(response);
           };
         });
 
         it('should return a list of Metric Definitions', () => {
-          return queryCtrl.getMetricDefinitions('').then(result => {
+          return queryCtrl.getMetricDefinitions('').then((result: any) => {
             expect(result[0].text).toBe('Microsoft.Compute/virtualMachines');
             expect(result[1].text).toBe('Microsoft.Network/publicIPAddresses');
           });
@@ -99,9 +108,15 @@ describe('AzureMonitorQueryCtrl', () => {
         const response = [{ text: 'test1', value: 'test1' }, { text: 'test2', value: 'test2' }];
 
         beforeEach(() => {
+          queryCtrl.target.subscription = 'sub1';
           queryCtrl.target.azureMonitor.resourceGroup = 'test';
           queryCtrl.target.azureMonitor.metricDefinition = 'Microsoft.Compute/virtualMachines';
-          queryCtrl.datasource.getResourceNames = function(resourceGroup, metricDefinition) {
+          queryCtrl.datasource.getResourceNames = function(
+            subscriptionId: any,
+            resourceGroup: any,
+            metricDefinition: any
+          ) {
+            expect(subscriptionId).toBe('sub1');
             expect(resourceGroup).toBe('test');
             expect(metricDefinition).toBe('Microsoft.Compute/virtualMachines');
             return this.$q.when(response);
@@ -109,7 +124,7 @@ describe('AzureMonitorQueryCtrl', () => {
         });
 
         it('should return a list of Resource Names', () => {
-          return queryCtrl.getResourceNames('').then(result => {
+          return queryCtrl.getResourceNames('').then((result: any) => {
             expect(result[0].text).toBe('test1');
             expect(result[1].text).toBe('test2');
           });
@@ -129,34 +144,45 @@ describe('AzureMonitorQueryCtrl', () => {
     });
 
     describe('when getOptions for the Metric Names dropdown is called', () => {
-      describe('and resourceGroup, metricDefinition and resourceName have values', () => {
+      describe('and resourceGroup, metricDefinition, resourceName and metricNamespace have values', () => {
         const response = [{ text: 'metric1', value: 'metric1' }, { text: 'metric2', value: 'metric2' }];
 
         beforeEach(() => {
+          queryCtrl.target.subscription = 'sub1';
           queryCtrl.target.azureMonitor.resourceGroup = 'test';
           queryCtrl.target.azureMonitor.metricDefinition = 'Microsoft.Compute/virtualMachines';
           queryCtrl.target.azureMonitor.resourceName = 'test';
-          queryCtrl.datasource.getMetricNames = function(resourceGroup, metricDefinition, resourceName) {
+          queryCtrl.target.azureMonitor.metricNamespace = 'test';
+          queryCtrl.datasource.getMetricNames = function(
+            subscriptionId: any,
+            resourceGroup: any,
+            metricDefinition: any,
+            resourceName: any,
+            metricNamespace: any
+          ) {
+            expect(subscriptionId).toBe('sub1');
             expect(resourceGroup).toBe('test');
             expect(metricDefinition).toBe('Microsoft.Compute/virtualMachines');
             expect(resourceName).toBe('test');
+            expect(metricNamespace).toBe('test');
             return this.$q.when(response);
           };
         });
 
         it('should return a list of Metric Names', () => {
-          return queryCtrl.getMetricNames('').then(result => {
+          return queryCtrl.getMetricNames('').then((result: any) => {
             expect(result[0].text).toBe('metric1');
             expect(result[1].text).toBe('metric2');
           });
         });
       });
 
-      describe('and resourceGroup, metricDefinition and resourceName do not have values', () => {
+      describe('and resourceGroup, metricDefinition, resourceName and metricNamespace do not have values', () => {
         beforeEach(() => {
           queryCtrl.target.azureMonitor.resourceGroup = 'select';
           queryCtrl.target.azureMonitor.metricDefinition = 'select';
           queryCtrl.target.azureMonitor.resourceName = 'select';
+          queryCtrl.target.azureMonitor.metricNamespace = 'select';
         });
 
         it('should return without making a call to datasource', () => {
@@ -166,22 +192,33 @@ describe('AzureMonitorQueryCtrl', () => {
     });
 
     describe('when onMetricNameChange is triggered for the Metric Names dropdown', () => {
-      const response = {
+      const response: any = {
         primaryAggType: 'Average',
-        supportAggOptions: ['Average', 'Total'],
-        supportedTimeGrains: ['PT1M', 'P1D'],
+        supportedAggTypes: ['Average', 'Total'],
+        supportedTimeGrains: [{ text: 'PT1M', value: 'PT1M' }, { text: 'P1D', value: 'P1D' }],
         dimensions: [],
       };
 
       beforeEach(() => {
+        queryCtrl.target.subscription = 'sub1';
         queryCtrl.target.azureMonitor.resourceGroup = 'test';
         queryCtrl.target.azureMonitor.metricDefinition = 'Microsoft.Compute/virtualMachines';
         queryCtrl.target.azureMonitor.resourceName = 'test';
+        queryCtrl.target.azureMonitor.metricNamespace = 'test';
         queryCtrl.target.azureMonitor.metricName = 'Percentage CPU';
-        queryCtrl.datasource.getMetricMetadata = function(resourceGroup, metricDefinition, resourceName, metricName) {
+        queryCtrl.datasource.getMetricMetadata = function(
+          subscription: any,
+          resourceGroup: any,
+          metricDefinition: any,
+          resourceName: any,
+          metricNamespace: any,
+          metricName: any
+        ) {
+          expect(subscription).toBe('sub1');
           expect(resourceGroup).toBe('test');
           expect(metricDefinition).toBe('Microsoft.Compute/virtualMachines');
           expect(resourceName).toBe('test');
+          expect(metricNamespace).toBe('test');
           expect(metricName).toBe('Percentage CPU');
           return this.$q.when(response);
         };
@@ -190,14 +227,47 @@ describe('AzureMonitorQueryCtrl', () => {
       it('should set the options and default selected value for the Aggregations dropdown', () => {
         queryCtrl.onMetricNameChange().then(() => {
           expect(queryCtrl.target.azureMonitor.aggregation).toBe('Average');
-          expect(queryCtrl.target.azureMonitor.aggOptions).toBe(['Average', 'Total']);
-          expect(queryCtrl.target.azureMonitor.timeGrains).toBe(['PT1M', 'P1D']);
+          expect(queryCtrl.target.azureMonitor.aggOptions).toEqual(['Average', 'Total']);
+          expect(queryCtrl.target.azureMonitor.timeGrains).toEqual([
+            { text: 'auto', value: 'auto' },
+            { text: 'PT1M', value: 'PT1M' },
+            { text: 'P1D', value: 'P1D' },
+          ]);
         });
       });
     });
   });
 
   describe('and query type is Application Insights', () => {
+    describe('and target is in old format', () => {
+      it('data is migrated', () => {
+        queryCtrl.target.appInsights.xaxis = 'sample-x';
+        queryCtrl.target.appInsights.yaxis = 'sample-y';
+        queryCtrl.target.appInsights.spliton = 'sample-split';
+        queryCtrl.target.appInsights.groupBy = 'sample-group';
+        queryCtrl.target.appInsights.groupByOptions = ['sample-group-1', 'sample-group-2'];
+        queryCtrl.target.appInsights.filter = 'sample-filter';
+        queryCtrl.target.appInsights.metricName = 'sample-metric';
+
+        queryCtrl.migrateApplicationInsightsKeys();
+
+        expect(queryCtrl.target.appInsights.xaxis).toBeUndefined();
+        expect(queryCtrl.target.appInsights.yaxis).toBeUndefined();
+        expect(queryCtrl.target.appInsights.spliton).toBeUndefined();
+        expect(queryCtrl.target.appInsights.groupBy).toBeUndefined();
+        expect(queryCtrl.target.appInsights.groupByOptions).toBeUndefined();
+        expect(queryCtrl.target.appInsights.filter).toBeUndefined();
+
+        expect(queryCtrl.target.appInsights.timeColumn).toBe('sample-x');
+        expect(queryCtrl.target.appInsights.valueColumn).toBe('sample-y');
+        expect(queryCtrl.target.appInsights.segmentColumn).toBe('sample-split');
+        expect(queryCtrl.target.appInsights.dimension).toBe('sample-group');
+        expect(queryCtrl.target.appInsights.dimensions).toEqual(['sample-group-1', 'sample-group-2']);
+        expect(queryCtrl.target.appInsights.dimensionFilter).toBe('sample-filter');
+        expect(queryCtrl.target.appInsights.metricName).toBe('sample-metric');
+      });
+    });
+
     describe('when getOptions for the Metric Names dropdown is called', () => {
       const response = [{ text: 'metric1', value: 'metric1' }, { text: 'metric2', value: 'metric2' }];
 
@@ -209,7 +279,7 @@ describe('AzureMonitorQueryCtrl', () => {
       });
 
       it('should return a list of Metric Names', () => {
-        return queryCtrl.getAppInsightsMetricNames().then(result => {
+        return queryCtrl.getAppInsightsMetricNames().then((result: any) => {
           expect(result[0].text).toBe('metric1');
           expect(result[1].text).toBe('metric2');
         });
@@ -218,7 +288,7 @@ describe('AzureMonitorQueryCtrl', () => {
 
     describe('when getOptions for the GroupBy segments dropdown is called', () => {
       beforeEach(() => {
-        queryCtrl.target.appInsights.groupByOptions = ['opt1', 'opt2'];
+        queryCtrl.target.appInsights.dimensions = ['opt1', 'opt2'];
       });
 
       it('should return a list of GroupBy segments', () => {
@@ -239,7 +309,7 @@ describe('AzureMonitorQueryCtrl', () => {
 
       beforeEach(() => {
         queryCtrl.target.appInsights.metricName = 'requests/failed';
-        queryCtrl.datasource.getAppInsightsMetricMetadata = function(metricName) {
+        queryCtrl.datasource.getAppInsightsMetricMetadata = function(metricName: string) {
           expect(metricName).toBe('requests/failed');
           return this.$q.when(response);
         };
@@ -250,8 +320,8 @@ describe('AzureMonitorQueryCtrl', () => {
           expect(queryCtrl.target.appInsights.aggregation).toBe('avg');
           expect(queryCtrl.target.appInsights.aggOptions).toContain('avg');
           expect(queryCtrl.target.appInsights.aggOptions).toContain('sum');
-          expect(queryCtrl.target.appInsights.groupByOptions).toContain('client/os');
-          expect(queryCtrl.target.appInsights.groupByOptions).toContain('client/city');
+          expect(queryCtrl.target.appInsights.dimensions).toContain('client/os');
+          expect(queryCtrl.target.appInsights.dimensions).toContain('client/city');
         });
       });
     });

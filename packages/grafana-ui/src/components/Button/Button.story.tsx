@@ -1,6 +1,5 @@
 import { storiesOf } from '@storybook/react';
 import { Button, LinkButton } from './Button';
-import { ButtonSize, ButtonVariant, CommonButtonProps } from './AbstractButton';
 // @ts-ignore
 import withPropsCombinations from 'react-storybook-addon-props-combinations';
 import { action } from '@storybook/addon-actions';
@@ -15,20 +14,14 @@ const defaultProps = {
 };
 
 const variants = {
-  size: [ButtonSize.ExtraSmall, ButtonSize.Small, ButtonSize.Medium, ButtonSize.Large, ButtonSize.ExtraLarge],
-  variant: [
-    ButtonVariant.Primary,
-    ButtonVariant.Secondary,
-    ButtonVariant.Danger,
-    ButtonVariant.Inverse,
-    ButtonVariant.Transparent,
-  ],
+  size: ['xs', 'sm', 'md', 'lg'],
+  variant: ['primary', 'secondary', 'danger', 'inverse', 'transparent'],
 };
 const combinationOptions = {
   CombinationRenderer: ThemeableCombinationsRowRenderer,
 };
 
-const renderButtonStory = (buttonComponent: React.ComponentType<CommonButtonProps>) => {
+const renderButtonStory = (buttonComponent: typeof Button | typeof LinkButton) => {
   const isDisabled = boolean('Disable button', false);
   return withPropsCombinations(
     buttonComponent,
@@ -48,7 +41,7 @@ ButtonStories.add('with icon', () => {
       Plus: 'fa fa-plus',
       User: 'fa fa-user',
       Gear: 'fa fa-gear',
-      Annotation: 'gicon gicon-add-annotation',
+      Annotation: 'gicon gicon-annotation',
     },
     'fa fa-plus'
   );

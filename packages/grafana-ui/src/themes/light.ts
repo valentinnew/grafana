@@ -1,8 +1,8 @@
-import tinycolor from 'tinycolor2';
-import defaultTheme from './default';
+import defaultTheme, { commonColorsPalette } from './default';
 import { GrafanaTheme, GrafanaThemeType } from '../types/theme';
 
 const basicColors = {
+  ...commonColorsPalette,
   black: '#000000',
   white: '#ffffff',
   dark1: '#1e2028',
@@ -37,11 +37,14 @@ const basicColors = {
   purple: '#9954bb',
   variable: '#007580',
   orange: '#ff7941',
+  orangeDark: '#ed5700',
 };
 
 const lightTheme: GrafanaTheme = {
   ...defaultTheme,
   type: GrafanaThemeType.Light,
+  isDark: false,
+  isLight: true,
   name: 'Grafana Light',
   colors: {
     ...basicColors,
@@ -65,18 +68,40 @@ const lightTheme: GrafanaTheme = {
     text: basicColors.gray1,
     textStrong: basicColors.dark2,
     textWeak: basicColors.gray2,
-    textEmphasis: basicColors.gray5,
+    textEmphasis: basicColors.dark5,
     textFaint: basicColors.dark4,
     link: basicColors.gray1,
-    linkDisabled: new tinycolor(basicColors.gray1).lighten(30).toString(),
-    linkHover: new tinycolor(basicColors.gray1).darken(20).toString(),
+    linkDisabled: basicColors.gray3,
+    linkHover: basicColors.dark1,
     linkExternal: basicColors.blueLight,
     headingColor: basicColors.gray1,
+    pageHeaderBorder: basicColors.gray4,
+
+    // Next-gen forms functional colors
+    formLabel: basicColors.gray33,
+    formDescription: basicColors.gray33,
+    formLegend: basicColors.gray25,
+    formInputBg: basicColors.white,
+    formInputBgDisabled: basicColors.gray95,
+    formInputBorder: basicColors.gray85,
+    formInputBorderHover: basicColors.gray70,
+    formInputBorderActive: basicColors.blue77,
+    formInputBorderInvalid: basicColors.red88,
+    formInputFocusOutline: basicColors.blue95,
+    formInputText: basicColors.gray33,
+    formInputTextStrong: basicColors.gray25,
+    formInputTextWhite: basicColors.white,
+    formValidationMessageText: basicColors.white,
+    formValidationMessageBg: basicColors.red88,
   },
   background: {
     dropdown: basicColors.white,
     scrollbar: basicColors.gray5,
     scrollbar2: basicColors.gray5,
+    pageHeader: `linear-gradient(90deg, ${basicColors.white}, ${basicColors.gray7})`,
+  },
+  shadow: {
+    pageHeader: `inset 0px -3px 10px ${basicColors.gray6}`,
   },
 };
 
