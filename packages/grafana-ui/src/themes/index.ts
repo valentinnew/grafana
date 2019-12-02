@@ -1,4 +1,5 @@
-import { ThemeContext, withTheme } from './ThemeContext';
+import { ThemeContext, withTheme, useTheme, mockThemeContext } from './ThemeContext';
 import { getTheme, mockTheme } from './getTheme';
-
-export { ThemeContext, withTheme, mockTheme, getTheme };
+import { selectThemeVariant } from './selectThemeVariant';
+export { stylesFactory } from './stylesFactory';
+export { ThemeContext, withTheme, mockTheme, getTheme, selectThemeVariant, useTheme, mockThemeContext };

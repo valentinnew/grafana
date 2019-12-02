@@ -14,8 +14,7 @@ import { DashboardGrid } from '../dashgrid/DashboardGrid';
 import { DashNav } from '../components/DashNav';
 import { SubMenu } from '../components/SubMenu';
 import { DashboardSettings } from '../components/DashboardSettings';
-import { CustomScrollbar } from '@grafana/ui';
-import { AlertBox } from 'app/core/components/AlertBox/AlertBox';
+import { CustomScrollbar, Alert } from '@grafana/ui';
 
 // Redux
 import { initDashboard } from '../state/initDashboard';
@@ -32,7 +31,7 @@ import {
   AppNotificationSeverity,
 } from 'app/types';
 import { DashboardModel, PanelModel } from 'app/features/dashboard/state';
-
+import { PanelInspector } from '../components/Inspector/PanelInspector';
 export interface Props {
   urlUid?: string;
   urlSlug?: string;
@@ -40,6 +39,7 @@ export interface Props {
   editview?: string;
   urlPanelId?: string;
   urlFolderId?: string;
+  inspectPanelId?: string;
   $scope: any;
   $injector: any;
   routeInfo: DashboardRouteInfo;
@@ -61,6 +61,7 @@ export interface State {
   isFullscreen: boolean;
   fullscreenPanel: PanelModel | null;
   scrollTop: number;
+  updateScrollTop: number;
   rememberScrollTop: number;
   showLoadingState: boolean;
 }
@@ -73,6 +74,7 @@ export class DashboardPage extends PureComponent<Props, State> {
     showLoadingState: false,
     fullscreenPanel: null,
     scrollTop: 0,
+    updateScrollTop: null,
     rememberScrollTop: 0,
   };
 
@@ -168,7 +170,7 @@ export class DashboardPage extends PureComponent<Props, State> {
         isEditing: false,
         isFullscreen: false,
         fullscreenPanel: null,
-        scrollTop: this.state.rememberScrollTop,
+        updateScrollTop: this.state.rememberScrollTop,
       },
       this.triggerPanelsRendering.bind(this)
     );
@@ -204,7 +206,7 @@ export class DashboardPage extends PureComponent<Props, State> {
 
   setScrollTop = (e: MouseEvent<HTMLElement>): void => {
     const target = e.target as HTMLElement;
-    this.setState({ scrollTop: target.scrollTop });
+    this.setState({ scrollTop: target.scrollTop, updateScrollTop: null });
   };
 
   onAddPanel = () => {
@@ -240,18 +242,18 @@ export class DashboardPage extends PureComponent<Props, State> {
 
     return (
       <div className="dashboard-loading">
-        <AlertBox
+        <Alert
           severity={AppNotificationSeverity.Error}
           title={initError.message}
-          text={getMessageFromError(initError.error)}
+          children={getMessageFromError(initError.error)}
         />
       </div>
     );
   }
 
   render() {
-    const { dashboard, editview, $injector, isInitSlow, initError } = this.props;
-    const { isSettingsOpening, isEditing, isFullscreen, scrollTop } = this.state;
+    const { dashboard, editview, $injector, isInitSlow, initError, inspectPanelId } = this.props;
+    const { isSettingsOpening, isEditing, isFullscreen, scrollTop, updateScrollTop } = this.state;
 
     if (!dashboard) {
       if (isInitSlow) {
@@ -270,6 +272,12 @@ export class DashboardPage extends PureComponent<Props, State> {
       'dashboard-container--has-submenu': dashboard.meta.submenuEnabled,
     });
 
+    // Find the panel to inspect
+    const inspectPanel = inspectPanelId ? dashboard.getPanelById(parseInt(inspectPanelId, 10)) : null;
+
+    // Only trigger render when the scroll has moved by 25
+    const approximateScrollTop = Math.round(scrollTop / 25) * 25;
+
     return (
       <div className={classes}>
         <DashNav
@@ -282,9 +290,9 @@ export class DashboardPage extends PureComponent<Props, State> {
         />
         <div className="scroll-canvas scroll-canvas--dashboard">
           <CustomScrollbar
-            autoHeightMin={'100%'}
+            autoHeightMin="100%"
             setScrollTop={this.setScrollTop}
-            scrollTop={scrollTop}
+            scrollTop={updateScrollTop}
             updateAfterMountMs={500}
             className="custom-scrollbar--page"
           >
@@ -294,10 +302,17 @@ export class DashboardPage extends PureComponent<Props, State> {
 
             <div className={gridWrapperClasses}>
               {dashboard.meta.submenuEnabled && <SubMenu dashboard={dashboard} />}
-              <DashboardGrid dashboard={dashboard} isEditing={isEditing} isFullscreen={isFullscreen} />
+              <DashboardGrid
+                dashboard={dashboard}
+                isEditing={isEditing}
+                isFullscreen={isFullscreen}
+                scrollTop={approximateScrollTop}
+              />
             </div>
           </CustomScrollbar>
         </div>
+
+        {inspectPanel && <PanelInspector dashboard={dashboard} panel={inspectPanel} />}
       </div>
     );
   }
@@ -312,6 +327,7 @@ export const mapStateToProps = (state: StoreState) => ({
   urlFolderId: state.location.query.folderId,
   urlFullscreen: !!state.location.query.fullscreen,
   urlEdit: !!state.location.query.edit,
+  inspectPanelId: state.location.query.inspect,
   initPhase: state.dashboard.initPhase,
   isInitSlow: state.dashboard.isInitSlow,
   initError: state.dashboard.initError,
@@ -325,9 +341,4 @@ const mapDispatchToProps = {
   updateLocation,
 };
 
-export default hot(module)(
-  connect(
-    mapStateToProps,
-    mapDispatchToProps
-  )(DashboardPage)
-);
+export default hot(module)(connect(mapStateToProps, mapDispatchToProps)(DashboardPage));

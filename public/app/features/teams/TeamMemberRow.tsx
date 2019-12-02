@@ -1,8 +1,9 @@
 import React, { PureComponent } from 'react';
 import { connect } from 'react-redux';
-import { DeleteButton, Select, SelectOptionItem } from '@grafana/ui';
+import { DeleteButton, Select } from '@grafana/ui';
+import { SelectableValue } from '@grafana/data';
 
-import { TeamMember, teamsPermissionLevels } from 'app/types';
+import { TeamMember, teamsPermissionLevels, TeamPermissionLevel } from 'app/types';
 import { WithFeatureToggle } from 'app/core/components/WithFeatureToggle';
 import { updateTeamMember, removeTeamMember } from './state/actions';
 import { TagBadge } from 'app/core/components/TagFilter/TagBadge';
@@ -27,7 +28,7 @@ export class TeamMemberRow extends PureComponent<Props> {
     this.props.removeTeamMember(member.userId);
   }
 
-  onPermissionChange = (item: SelectOptionItem, member: TeamMember) => {
+  onPermissionChange = (item: SelectableValue<TeamPermissionLevel>, member: TeamMember) => {
     const permission = item.value;
     const updatedTeamMember = { ...member, permission };
 
@@ -81,6 +82,7 @@ export class TeamMemberRow extends PureComponent<Props> {
         </td>
         <td>{member.login}</td>
         <td>{member.email}</td>
+        <td>{member.name}</td>
         {this.renderPermissions(member)}
         {syncEnabled && this.renderLabels(member.labels)}
         <td className="text-right">
@@ -91,7 +93,7 @@ export class TeamMemberRow extends PureComponent<Props> {
   }
 }
 
-function mapStateToProps(state) {
+function mapStateToProps(state: any) {
   return {};
 }
 
@@ -100,7 +102,4 @@ const mapDispatchToProps = {
   updateTeamMember,
 };
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps
-)(TeamMemberRow);
+export default connect(mapStateToProps, mapDispatchToProps)(TeamMemberRow);

@@ -4,15 +4,21 @@ import config from 'app/core/config';
 export interface Props {
   isReadOnly: boolean;
   onDelete: () => void;
-  onSubmit: (event) => void;
-  onTest: (event) => void;
+  onSubmit: (event: any) => void;
+  onTest: (event: any) => void;
 }
 
 const ButtonRow: FC<Props> = ({ isReadOnly, onDelete, onSubmit, onTest }) => {
   return (
     <div className="gf-form-button-row">
       {!isReadOnly && (
-        <button type="submit" className="btn btn-primary" disabled={isReadOnly} onClick={event => onSubmit(event)}>
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={isReadOnly}
+          onClick={event => onSubmit(event)}
+          aria-label="Save and Test button"
+        >
           Save &amp; Test
         </button>
       )}
@@ -21,7 +27,13 @@ const ButtonRow: FC<Props> = ({ isReadOnly, onDelete, onSubmit, onTest }) => {
           Test
         </button>
       )}
-      <button type="submit" className="btn btn-danger" disabled={isReadOnly} onClick={onDelete}>
+      <button
+        type="submit"
+        className="btn btn-danger"
+        disabled={isReadOnly}
+        onClick={onDelete}
+        aria-label="Delete button"
+      >
         Delete
       </button>
       <a className="btn btn-inverse" href={`${config.appSubUrl}/datasources`}>

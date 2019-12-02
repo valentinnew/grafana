@@ -4,16 +4,28 @@ import coreModule from 'app/core/core_module';
 
 // Services & Utils
 import config from 'app/core/config';
-import { importPluginModule } from './plugin_loader';
+import { importDataSourcePlugin } from './plugin_loader';
+import { DataSourceSrv as DataSourceService, getDataSourceSrv as getDataSourceService } from '@grafana/runtime';
 
 // Types
-import { DataSourceApi, DataSourceSelectItem, ScopedVars } from '@grafana/ui/src/types';
+import { DataSourceApi, DataSourceSelectItem, ScopedVars, AppEvents } from '@grafana/data';
+import { auto } from 'angular';
+import { TemplateSrv } from '../templating/template_srv';
+import { GrafanaRootScope } from 'app/routes/GrafanaCtrl';
 
-export class DatasourceSrv {
-  datasources: { [name: string]: DataSourceApi };
+// Pretend Datasource
+import { expressionDatasource } from 'app/features/expressions/ExpressionDatasource';
+
+export class DatasourceSrv implements DataSourceService {
+  datasources: Record<string, DataSourceApi>;
 
   /** @ngInject */
-  constructor(private $q, private $injector, private $rootScope, private templateSrv) {
+  constructor(
+    private $q: any,
+    private $injector: auto.IInjectorService,
+    private $rootScope: GrafanaRootScope,
+    private templateSrv: TemplateSrv
+  ) {
     this.init();
   }
 
@@ -27,7 +39,7 @@ export class DatasourceSrv {
     }
 
     // Interpolation here is to support template variable in data source selection
-    name = this.templateSrv.replace(name, scopedVars, (value, variable) => {
+    name = this.templateSrv.replace(name, scopedVars, (value: any[], variable: any) => {
       if (Array.isArray(value)) {
         return value[0];
       }
@@ -45,37 +57,45 @@ export class DatasourceSrv {
     return this.loadDatasource(name);
   }
 
-  loadDatasource(name: string): Promise<DataSourceApi> {
+  loadDatasource(name: string): Promise<DataSourceApi<any, any>> {
+    // Expression Datasource (not a real datasource)
+    if (name === expressionDatasource.name) {
+      this.datasources[name] = expressionDatasource as any;
+      return this.$q.when(expressionDatasource);
+    }
+
     const dsConfig = config.datasources[name];
     if (!dsConfig) {
-      return this.$q.reject({ message: 'Datasource named ' + name + ' was not found' });
+      return this.$q.reject({ message: `Datasource named ${name} was not found` });
     }
 
     const deferred = this.$q.defer();
-    const pluginDef = dsConfig.meta;
 
-    importPluginModule(pluginDef.module)
-      .then(plugin => {
+    importDataSourcePlugin(dsConfig.meta)
+      .then(dsPlugin => {
         // check if its in cache now
         if (this.datasources[name]) {
           deferred.resolve(this.datasources[name]);
           return;
         }
 
-        // plugin module needs to export a constructor function named Datasource
-        if (!plugin.Datasource) {
-          throw new Error('Plugin module is missing Datasource constructor');
-        }
+        // If there is only one constructor argument it is instanceSettings
+        const useAngular = dsPlugin.DataSourceClass.length !== 1;
+        const instance: DataSourceApi = useAngular
+          ? this.$injector.instantiate(dsPlugin.DataSourceClass, {
+              instanceSettings: dsConfig,
+            })
+          : new dsPlugin.DataSourceClass(dsConfig);
 
-        const instance: DataSourceApi = this.$injector.instantiate(plugin.Datasource, { instanceSettings: dsConfig });
-        instance.meta = pluginDef;
-        instance.name = name;
-        instance.pluginExports = plugin;
+        instance.components = dsPlugin.components;
+        instance.meta = dsConfig.meta;
+
+        // store in instance cache
         this.datasources[name] = instance;
         deferred.resolve(instance);
       })
       .catch(err => {
-        this.$rootScope.appEvent('alert-error', [dsConfig.name + ' plugin failed', err.toString()]);
+        this.$rootScope.appEvent(AppEvents.alertError, [dsConfig.name + ' plugin failed', err.toString()]);
       });
 
     return deferred.promise;
@@ -92,7 +112,7 @@ export class DatasourceSrv {
   }
 
   getAnnotationSources() {
-    const sources = [];
+    const sources: any[] = [];
 
     this.addDataSourceVariables(sources);
 
@@ -105,7 +125,7 @@ export class DatasourceSrv {
     return sources;
   }
 
-  getMetricSources(options?) {
+  getMetricSources(options?: { skipVariables?: boolean }) {
     const metricSources: DataSourceSelectItem[] = [];
 
     _.each(config.datasources, (value, key) => {
@@ -115,8 +135,10 @@ export class DatasourceSrv {
         //Make sure grafana and mixed are sorted at the bottom
         if (value.meta.id === 'grafana') {
           metricSource.sort = String.fromCharCode(253);
-        } else if (value.meta.id === 'mixed') {
+        } else if (value.meta.id === 'dashboard') {
           metricSource.sort = String.fromCharCode(254);
+        } else if (value.meta.id === 'mixed') {
+          metricSource.sort = String.fromCharCode(255);
         }
 
         metricSources.push(metricSource);
@@ -145,7 +167,7 @@ export class DatasourceSrv {
     return metricSources;
   }
 
-  addDataSourceVariables(list) {
+  addDataSourceVariables(list: any[]) {
     // look for data source variables
     for (let i = 0; i < this.templateSrv.variables.length; i++) {
       const variable = this.templateSrv.variables[i];
@@ -173,14 +195,8 @@ export class DatasourceSrv {
   }
 }
 
-let singleton: DatasourceSrv;
-
-export function setDatasourceSrv(srv: DatasourceSrv) {
-  singleton = srv;
-}
-
 export function getDatasourceSrv(): DatasourceSrv {
-  return singleton;
+  return getDataSourceService() as DatasourceSrv;
 }
 
 coreModule.service('datasourceSrv', DatasourceSrv);

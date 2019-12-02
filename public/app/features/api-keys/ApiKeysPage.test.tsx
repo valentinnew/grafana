@@ -1,8 +1,9 @@
 import React from 'react';
 import { shallow } from 'enzyme';
 import { Props, ApiKeysPage } from './ApiKeysPage';
-import { NavModel, ApiKey } from 'app/types';
+import { ApiKey } from 'app/types';
 import { getMultipleMockKeys, getMockKey } from './__mocks__/apiKeysMock';
+import { NavModel } from '@grafana/data';
 
 const setup = (propOverrides?: object) => {
   const props: Props = {
@@ -22,6 +23,7 @@ const setup = (propOverrides?: object) => {
     setSearchQuery: jest.fn(),
     addApiKey: jest.fn(),
     apiKeysCount: 0,
+    includeExpired: false,
   };
 
   Object.assign(props, propOverrides);
@@ -62,7 +64,7 @@ describe('Life cycle', () => {
 
     instance.componentDidMount();
 
-    expect(instance.props.loadApiKeys).toHaveBeenCalled();
+    expect(instance.props.loadApiKeys).toHaveBeenCalledWith(false);
   });
 });
 
@@ -71,7 +73,7 @@ describe('Functions', () => {
     it('should call delete team', () => {
       const { instance } = setup();
       instance.onDeleteApiKey(getMockKey());
-      expect(instance.props.deleteApiKey).toHaveBeenCalledWith(1);
+      expect(instance.props.deleteApiKey).toHaveBeenCalledWith(1, false);
     });
   });
 

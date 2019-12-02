@@ -1,14 +1,11 @@
-export * from './processSeriesData';
-export * from './valueFormats/valueFormats';
 export * from './colors';
-export * from './namedColorsPalette';
-export * from './thresholds';
-export * from './string';
-export * from './csv';
-export * from './statsCalculator';
-export * from './displayValue';
-export * from './deprecationWarning';
-export * from './logs';
-export * from './labels';
-export { getMappedValue } from './valueMappings';
 export * from './validate';
+export * from './slate';
+export * from './dataLinks';
+export * from './tags';
+export * from './measureText';
+export { default as ansicolor } from './ansicolor';
+
+// Export with a namespace
+import * as DOMUtil from './dom'; // includes Element.closest polyfil
+export { DOMUtil };

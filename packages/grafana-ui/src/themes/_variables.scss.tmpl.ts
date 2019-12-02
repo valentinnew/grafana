@@ -1,6 +1,6 @@
 /* tslint:disable:max-line-length */
 
-import { GrafanaThemeCommons } from '../types';
+import { GrafanaThemeCommons } from '@grafana/data';
 import { renderGeneratedFileBanner } from '../utils/generatedFileBanner';
 
 export const commonThemeVarsTemplate = (theme: GrafanaThemeCommons) =>
@@ -87,6 +87,12 @@ $container-max-widths: (
 $grid-columns: 12 !default;
 $grid-gutter-width: ${theme.spacing.gutter} !default;
 
+// Component heights
+// -------------------------
+$height-sm: ${theme.height.sm};
+$height-md: ${theme.height.md};
+$height-lg: ${theme.height.lg};
+
 // Typography
 // -------------------------
 
@@ -170,7 +176,7 @@ $zindex-typeahead: ${theme.zIndex.typeahead};
 //
 
 $btn-padding-x: 14px !default;
-$btn-padding-y: 10px !default;
+$btn-padding-y: 8px !default;
 $btn-line-height: 1 !default;
 $btn-font-weight: ${theme.typography.weight.semibold} !default;
 
@@ -187,10 +193,13 @@ $btn-semi-transparent: rgba(0, 0, 0, 0.2) !default;
 
 // sidemenu
 $side-menu-width: 60px;
+$navbar-padding: 20px;
 
 // dashboard
 $dashboard-padding: $space-md;
-$panel-padding: 0 $space-md $space-sm $space-md;
+$panel-padding: ${theme.panelPadding}px;
+$panel-header-height: ${theme.panelHeaderHeight}px;
+$panel-header-z-index: 10;
 
 // tabs
 $tabs-padding: 10px 15px 9px;

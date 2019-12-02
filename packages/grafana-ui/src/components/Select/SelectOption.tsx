@@ -6,7 +6,7 @@ import { components } from '@torkelo/react-select';
 import { OptionProps } from 'react-select/lib/components/Option';
 
 // https://github.com/JedWatson/react-select/issues/3038
-interface ExtendedOptionProps extends OptionProps<any> {
+export interface ExtendedOptionProps extends OptionProps<any> {
   data: {
     description?: string;
     imgUrl?: string;
@@ -27,20 +27,6 @@ export const SelectOption = (props: ExtendedOptionProps) => {
         {isSelected && <i className="fa fa-check" aria-hidden="true" />}
       </div>
     </components.Option>
-  );
-};
-
-// was not able to type this without typescript error
-export const SingleValue = (props: any) => {
-  const { children, data } = props;
-
-  return (
-    <components.SingleValue {...props}>
-      <div className="gf-form-select-box__img-value">
-        {data.imgUrl && <img className="gf-form-select-box__desc-option__img" src={data.imgUrl} />}
-        {children}
-      </div>
-    </components.SingleValue>
   );
 };
 

@@ -1,8 +1,11 @@
 import React, { ChangeEvent, PureComponent } from 'react';
 
-import { FormField, FormLabel, Input, Select } from '..';
+import { FormField } from '../FormField/FormField';
+import { FormLabel } from '../FormLabel/FormLabel';
+import { Input } from '../Input/Input';
+import { Select } from '../Select/Select';
 
-import { MappingType, ValueMapping } from '../../types';
+import { MappingType, ValueMapping } from '@grafana/data';
 
 export interface Props {
   valueMapping: ValueMapping;
@@ -126,6 +129,7 @@ export default class MappingRow extends PureComponent<Props, State> {
             isSearchable={false}
             options={mappingOptions}
             value={mappingOptions.find(o => o.value === type)}
+            // @ts-ignore
             onChange={type => this.onMappingTypeChange(type.value)}
             width={7}
           />
